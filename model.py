@@ -48,3 +48,52 @@ def get_best_shift(img):
 def shift_image(img, sx, sy):
     shifted_img = shift(img, [sy, sx], mode='constant')
     return shifted_img
+
+def imageprepare(image):
+    img = image.convert('L')
+    img = ImageOps.invert(img)
+    img = img.resize((28, 28), Image.LANCZOS)
+    img_array = np.array(img) / 255.0
+    img_array = (img_array > 0.5) * 1.0
+    shiftx, shifty = get_best_shift(img_array)
+    img_array = shift_image(img_array, shiftx, shifty)
+    return img_array
+
+window = tk.Tk()
+window.title("Распознавание рукописных цифр")
+
+canvas_width = 200
+canvas_height = 200
+canvas = tk.Canvas(window, width=canvas_width, height=canvas_height, bg='white')
+canvas.pack()
+
+image1 = Image.new("RGB", (canvas_width, canvas_height), 'white')
+draw = ImageDraw.Draw(image1)
+
+def paint(event):
+    brush_size = 15
+    x1, y1 = (event.x - brush_size), (event.y - brush_size)
+    x2, y2 = (event.x + brush_size), (event.y + brush_size)
+    canvas.create_oval(x1, y1, x2, y2, fill='black', outline='black')
+    draw.ellipse([x1, y1, x2, y2], fill='black')
+
+canvas.bind("<B1-Motion>", paint)
+
+def clear_canvas():
+    canvas.delete('all')
+    draw.rectangle([0, 0, canvas_width, canvas_height], fill='white')
+
+def predict_digit():
+    img_array = imageprepare(image1)
+    img_array = img_array.reshape(1, 28, 28, 1)
+    prediction = model.predict(img_array)
+    print('Распознанная цифра:', np.argmax(prediction))
+
+btn_clear = tk.Button(window, text="Очистить", command=clear_canvas)
+btn_clear.pack()
+
+btn_predict = tk.Button(window, text="Предсказать", command=predict_digit)
+btn_predict.pack()
+
+window.mainloop()
+
